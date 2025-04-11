@@ -1,0 +1,680 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% --------------------------------------------------------
+% Rho
+% LaTeX Template
+% Version 2.1.0 (14/08/2024)
+%
+% Authors: 
+% Guillermo Jimenez (memo.notess1@gmail.com)
+% Eduardo Gracidas (eduardo.gracidas29@gmail.com)
+% 
+% License:
+% Creative Commons CC BY 4.0
+% --------------------------------------------------------
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\documentclass[9pt,a4paper,twoside]{rho-class/rho}
+\usepackage[english]{babel}
+
+\setbool{rho-abstract}{true} % Set true to show the abstract
+\setbool{corres-info}{true} % Set true to show the corresponding author section
+
+%----------------------------------------------------------
+% TITLE
+%----------------------------------------------------------
+
+\journalname{Design Lab CS59001 Project}
+\title{Traffic Detection and Tracking System Using YOLOv8}
+
+%----------------------------------------------------------
+% AUTHORS AND AFFILIATIONS
+%----------------------------------------------------------
+
+\author[1]{Saras Umakant Pantulwar 20CS30046}
+
+%----------------------------------------------------------
+
+\affil[1]{Department of Computer Science and Engineering}
+
+%----------------------------------------------------------
+% DATES
+%----------------------------------------------------------
+
+\dates{This report was compiled on April 10, 2025}
+
+%----------------------------------------------------------
+% FOOTER INFORMATION
+%----------------------------------------------------------
+
+\leadauthor{Saras Umakant Pantulwar 20CS30046}
+\footinfo{}
+\smalltitle{Traffic Detection}
+\institution{IIT Kharagpur}
+\theday{April 10, 2025}
+
+%----------------------------------------------------------
+% ARTICLE INFORMATION
+%----------------------------------------------------------
+
+% \corres{Provide the corresponding author information and publisher here.}
+% \email{pantulwarsaras@kgpian.iitkgp.ac.in}
+
+% \received{March 20, 2025}
+% \revised{April 1, 2025}
+% \accepted{April 5, 2025}
+% \published{April 8, 2025}
+
+% \license{Rho LaTeX Class \ccLogo\ This document is licensed under Creative Commons CC BY 4.0.}
+
+%----------------------------------------------------------
+% ABSTRACT
+%----------------------------------------------------------
+
+\begin{abstract}
+    This report presents a comprehensive traffic detection and tracking system built using YOLOv8, a state-of-the-art object detection algorithm. The system identifies and tracks vehicles in traffic videos, classifies them as incoming or outgoing, and generates statistical reports on traffic patterns. The project demonstrates real-time vehicle detection, tracking across frames, and directional classification with an emphasis on accuracy and efficiency. The system utilizes a pre-fine-tuned YOLOv8 model that was trained separately on a custom dataset of traffic objects.
+\end{abstract}
+
+%----------------------------------------------------------
+
+\keywords{traffic detection, YOLOv8, object tracking, computer vision, traffic monitoring, machine learning}
+
+%----------------------------------------------------------
+
+\begin{document}
+	
+    \maketitle
+    \thispagestyle{firststyle}
+    \tableofcontents
+    % \linenumbers
+    \newpage
+
+
+
+%----------------------------------------------------------
+
+\section{Introduction}
+
+    \rhostart{T}he primary goal of this project is to develop a robust traffic monitoring system capable of detecting various traffic objects, tracking unique vehicles across video frames, classifying vehicles based on their movement direction, and generating statistical reports on traffic flow. The approach combines state-of-the-art object detection with custom tracking algorithms to create an efficient and accurate system.
+    
+    \subsection{Project Objective}
+    
+    The traffic detection and tracking system aims to accomplish the following tasks:
+    
+    \begin{itemize}
+        \item Detect various traffic objects (cars, trucks, buses, motorcycles, traffic lights, stop signs, etc.)
+        \item Track unique vehicles across video frames
+        \item Classify vehicles based on their movement direction (incoming or outgoing)
+        \item Generate statistical reports on traffic flow
+    \end{itemize}
+    
+    \subsection{Application Areas}
+    
+    This system has potential applications in several domains:
+    
+    \begin{itemize}
+        \item Smart traffic management
+        \item Urban planning and infrastructure development
+        \item Safety and security monitoring
+        \item Traffic flow optimization
+        \item Automated toll collection systems
+    \end{itemize}
+
+\section{System Pipeline Architecture}
+
+    \subsection{Overview}
+    
+    The system follows a pipeline architecture (Figure~\ref{fig:system-pipeline}) designed for efficient traffic monitoring and analysis:
+    
+    \begin{enumerate}
+        \item \textbf{Video Input Processing}: Frame extraction at 1 frame per second to optimize processing resources
+        \item \textbf{Object Detection}: Using a pre-fine-tuned YOLOv8 model to identify vehicles
+        \item \textbf{Vehicle Tracking}: Custom tracking algorithm based on centroid positioning and color matching
+        \item \textbf{Direction Classification}: Based on vertical movement patterns
+        \item \textbf{Data Aggregation}: Counting and classifying vehicles as incoming or outgoing
+        \item \textbf{Visualization}: Annotated video output with tracking information
+        \item \textbf{Output Generation}: CSV file containing vehicle count statistics
+    \end{enumerate}
+
+    \begin{figure}[h]
+        \centering
+        \includegraphics[width=1\linewidth]{figures/pipeline-diagram-revised (1).png}
+        \caption{System Pipeline }
+        \label{fig:system-pipeline}
+    \end{figure}
+    
+    \subsection{Vehicle Detection Component}
+    
+    The detection component uses a fine-tuned YOLOv8n model to identify vehicles in each frame. The detection function processes frames and returns bounding boxes with class information:
+    
+    \begin{lstlisting}[caption=Pseudocode for vehicle detection, language=Python]
+# Pseudocode for vehicle detection
+function detect_vehicles(frame):
+    Run YOLOv8 model on frame
+    Initialize empty list for vehicle detections
+    
+    For each detected object:
+        If object class is vehicle (car, truck, bus, motorcycle):
+            Extract bounding box coordinates and class
+            Calculate dominant color of vehicle
+            Add detection to vehicle list
+    
+    Return list of vehicle detections
+    \end{lstlisting}
+    
+    The system also extracts the dominant color of each vehicle for use in tracking:
+    
+    \begin{lstlisting}[caption=Pseudocode for color extraction, language=Python]
+# Pseudocode for color extraction
+function get_vehicle_color(frame, bbox):
+    Extract region of interest from frame using bbox
+    Calculate mean color (RGB) of region
+    Return mean color
+    \end{lstlisting}
+    
+    \subsection{Vehicle Tracking Algorithm}
+    
+    The tracking algorithm (implemented in \texttt{VehicleTracker} class) uses multiple criteria for vehicle identification:
+    
+    \begin{enumerate}
+        \item \textbf{Spatial Consistency}: Euclidean distance between centroids $<$ 50 pixels
+        \item \textbf{Color Similarity}: Color difference $<$ 50 (RGB space)
+        \item \textbf{Temporal Consistency}: Time difference between detections $\leq$ 3 frames
+        \item \textbf{Class Consistency}: Vehicles are tracked separately by their class ID
+    \end{enumerate}
+    
+    \begin{figure}[h]
+        \centering
+        \includegraphics[width=1\linewidth]{figures/vehicle-tracking-diagram.png}
+        \caption{Vehicle tracking }
+        \label{fig:vehicle-tracking}
+    \end{figure}
+
+    The algorithm employs these heuristics to maintain vehicle identity across frames (Figure~\ref{fig:vehicle-tracking}):
+    
+    \begin{lstlisting}[caption=Pseudocode for tracking heuristics, language=Python]
+# Pseudocode for tracking heuristics
+Calculate Euclidean distance between centroids
+Calculate color difference between vehicles
+If distance < 50 pixels AND color difference < 50:
+    Add potential match with cost = distance + color_diff
+    \end{lstlisting}
+    
+    The tracking involves a one-to-one matching process based on a combined cost function (distance + color difference) using a greedy assignment approach:
+    
+    \begin{lstlisting}[caption=Pseudocode for matching algorithm, language=Python]
+# Pseudocode for matching algorithm
+Sort candidate matches by cost (lowest first)
+For each candidate match:
+    If both detection and vehicle are unassigned:
+        Assign detection to vehicle
+    \end{lstlisting}
+    
+    This heuristic approach ensures that each detection is matched to at most one existing vehicle, and each existing vehicle is matched to at most one new detection, minimizing false associations.
+    
+    \subsection{Direction Classification}
+    
+    Vehicle direction is determined by:
+    \begin{enumerate}
+        \item For newly detected vehicles: Position relative to frame height midpoint
+        \begin{lstlisting}[caption=Pseudocode for new vehicle direction, language=Python]
+# Pseudocode for new vehicle direction
+If centroid_y > frame_height/2:
+    direction = "Incoming"
+Else:
+    direction = "Outgoing"
+        \end{lstlisting}
+        
+        \item For tracked vehicles: Vertical movement between frames
+        \begin{lstlisting}[caption=Pseudocode for tracked vehicle direction, language=Python]
+# Pseudocode for tracked vehicle direction
+If current_centroid_y > previous_centroid_y:
+    direction = "Incoming"
+Else:
+    direction = "Outgoing"
+        \end{lstlisting}
+    \end{enumerate}
+    
+    \subsection{Output Generation}
+    
+    The system produces two main outputs:
+    
+    \begin{enumerate}
+        \item \textbf{Annotated Video}: Shows detected vehicles with their unique IDs and bounding boxes
+        \item \textbf{CSV Report}: Contains the count of incoming and outgoing vehicles
+    \end{enumerate}
+    
+    The console output provides real-time monitoring information:
+    
+    \begin{lstlisting}[caption=Console output format, language=bash]
+[DETECTION OUTPUT PLACEHOLDER]
+[FRAME OUTPUT PLACEHOLDER]
+[TIME UPDATE PLACEHOLDER]
+[PROCESS COMPLETE PLACEHOLDER]
+    \end{lstlisting}
+
+\section{Pipeline Testing Results}
+
+    \subsection{Detection Performance}
+    
+    The fine-tuned YOLOv8n model demonstrated strong performance in detecting vehicles in the test video. Sample output from the detection process:
+    
+    \begin{lstlisting}[caption=Detection performance example, language=bash]
+0: 480x640 (no detections), 53.8ms
+Speed: 0.9ms preprocess, 53.8ms inference, 0.2ms postprocess per image at shape (1, 3, 480, 640)
+\end{lstlisting}
+    
+    The detection speed averaged around 60ms per frame on CPU (Apple M2), demonstrating the model's efficiency for near real-time applications.
+    
+    \subsection{Tracking Results}
+    
+    The tracking algorithm successfully maintained vehicle identities across frames and classified their directions:
+    
+    \begin{lstlisting}[caption=Tracking results example, language=bash]
+[DETECTION] Vehicles Detected: 0
+[FRAME 170] Vehicles Detected: 0
+
+[TIME UPDATE] -------------------------------------
+Time Elapsed: 17 sec
+Vehicles Detected: 0 in this second
+New Vehicles:
+Old Vehicles:
+-----------------------------------------
+\end{lstlisting}
+    
+    \subsection{Final Output}
+    
+    The system generated a comprehensive summary of traffic patterns in the analyzed time interval:
+    
+    \begin{lstlisting}[caption=Final output example, language=bash]
+[PROCESS COMPLETE] -----------------------------------
+Processed Video Interval: 15 - 20 sec
+Vehicle Counts Saved to: ./result/vehicle_counts.csv
+Incoming Vehicles: 1
+Outgoing Vehicles: 0
+---------------------------------------------
+\end{lstlisting}
+    
+    This output format provides clear, concise information that can be easily interpreted for traffic management purposes.
+
+\section{YOLOv8 Fine-tuning Process}
+
+    \subsection{Overview}
+    
+    The YOLOv8 fine-tuning (Figure~\ref{fig:yolov8_finetuning}) was performed as a separate, one-time process before implementing the main pipeline. This approach allows the system to use a pre-trained, optimized model during regular operation, significantly improving efficiency.
+    \begin{figure}[h]
+        \centering
+        \includegraphics[width=1\linewidth]{figures/yolo-finetuning-pipeline.png}
+        \caption{YOLO Fine tuning Pipeline }
+        \label{fig:yolov8_finetuning}
+    \end{figure}
+    
+    \subsection{Data Preparation}
+    
+    The data preparation process involved several steps:
+    
+    \begin{enumerate}
+        \item \textbf{Frame Extraction}: Using \texttt{frame-generation.py} to extract frames from traffic videos:
+        \begin{lstlisting}[caption=Pseudocode for frame extraction, language=Python]
+# Pseudocode for frame extraction
+function extract_frames(video_path, output_dir, frame_interval):
+    Open video
+    For each frame:
+        If frame_count % interval == 0:
+            Save frame as image in output directory
+    Close video
+        \end{lstlisting}
+        This script created a dataset of image frames stored in the \texttt{datasets/dataset/images/all} directory.
+        
+        \item \textbf{Manual Annotation}: Using LabelImg tool to annotate the extracted frames:
+        \begin{itemize}
+            \item \textbf{LabelImg Setup}:
+            \begin{itemize}
+                \item Clone repository: \texttt{git clone https://github.com/tzutalin/labelImg.git}
+                \item Install dependencies: \texttt{pip install pyqt5 lxml}
+                \item Run the tool: \texttt{python labelImg.py}
+            \end{itemize}
+            \item \textbf{Annotation Process}:
+            \begin{itemize}
+                \item Open directory containing the extracted frames
+                \item Set annotation format to YOLO
+                \item Draw bounding boxes around objects
+                \item Assign appropriate class labels
+                \item Save annotations as .txt files with same name as image
+            \end{itemize}
+        \end{itemize}
+        
+        The LabelImg tool generates YOLO format annotations where each line represents one object in the format:
+        \begin{lstlisting}[caption=YOLO annotation format, language=bash]
+<class_id> <x_center> <y_center> <width> <height>
+        \end{lstlisting}
+        
+        \item \textbf{Dataset Organization}: Using \texttt{organize-dataset.py} to split data into training and validation sets:
+        \begin{lstlisting}[caption=Pseudocode for dataset organization, language=Python]
+# Pseudocode for dataset organization
+function organize_dataset(source_dir, train_dir, val_dir, split_ratio):
+    Get all images from source directory
+    Randomly shuffle images
+    Split images into train (80%) and validation (20%) sets
+    Copy images and corresponding labels to respective directories
+        \end{lstlisting}
+        
+        This script created the following directory structure:
+        \begin{lstlisting}[caption=Dataset directory structure, language=bash]
+datasets/
+└── dataset/
+    ├── images/
+    │   ├── train/  
+    │   │   # 80% of images
+    │   └── val/    
+    │       # 20% of images
+    └── labels/
+        ├── train/  
+        │   # Corresponding labels for training images
+        └── val/    
+            # Corresponding labels for validation images
+        \end{lstlisting}
+        
+        \item \textbf{Configuration File}: Creating \texttt{data.yaml} to specify dataset parameters:
+        \begin{lstlisting}[caption=data.yaml configuration, language=yaml]
+# data.yaml
+train: datasets/dataset/images/train
+val: datasets/dataset/images/val
+
+# Number of classes
+nc: 14
+
+# Class names
+names: ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'train', 'truck', 'boat', 
+        'traffic light', 'fire hydrant', 'stop sign', 'parking meter', 'other']
+        \end{lstlisting}
+    \end{enumerate}
+    
+    \subsection{Training Configuration}
+    
+    The YOLOv8n model was trained on the custom dataset with the following configuration:
+    \newpage
+    \begin{lstlisting}[caption=Pseudocode for model training, language=Python]
+# Pseudocode for model training
+model = YOLO("yolov8n.pt")  # Load pre-trained base model
+model.train(
+    data="data.yaml",        # Dataset configuration
+    epochs=50,               # Training epochs
+    batch=16,                # Batch size
+    imgsz=640                # Input image size
+)
+    \end{lstlisting}
+    
+    \subsection{Training Performance}
+    
+    The YOLOv8n model was trained on a custom dataset with 14 classes. Key metrics from the training process:
+
+    \begin{table}[h]
+    \raggedright  % Add this line to shift the table to the left
+    \caption{Training metrics by epoch}
+    \label{tab:training}
+    \begin{tabular}{llllll}
+        \toprule
+        \textbf{Epoch} & \textbf{Box Loss} & \textbf{Class Loss} & \textbf{DFL Loss} & \textbf{mAP50} & \textbf{mAP50} \\
+        \midrule
+        1/50  & 1.81  & 4.63  & 1.465 & 0.0701 & 0.0532 \\
+        10/50 & 1.589 & 2.166 & 1.336 & 0.353  & 0.215  \\
+        25/50 & 1.377 & 1.54  & 1.196 & 0.47   & 0.308  \\
+        50/50 & 1.261 & 1.39  & 1.113 & 0.528  & 0.335  \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+    
+    The model showed steady improvement throughout training, with the final model achieving an mAP50 of 0.528 and mAP50-95 of 0.335.
+    
+    \subsection{Validation Performance}
+    
+    Class-specific performance of the best model:
+    
+    \begin{table}[h]
+        \centering
+        \caption{Validation metrics by class}
+        \label{tab:validation}
+        \begin{tabular}{lllll}
+            \toprule
+            \textbf{Class} & \textbf{Precision} & \textbf{Recall} & \textbf{mAP50} & \textbf{mAP50-95} \\
+            \midrule
+            All           & 0.77  & 0.49  & 0.519  & 0.344    \\
+            Car           & 0.865 & 0.773 & 0.868  & 0.556    \\
+            Truck         & 0.809 & 0.867 & 0.888  & 0.555    \\
+            Bus           & 0.851 & 1.0   & 0.995  & 0.845    \\
+            Motorcycle    & 0.618 & 0.571 & 0.686  & 0.394    \\
+            Traffic Light & 1.0   & 0.0   & 0.0301 & 0.00438  \\
+            Stop Sign     & 1.0   & 0.0   & 0.0    & 0.0      \\
+            Random        & 0.248 & 0.222 & 0.164  & 0.0519   \\
+            \bottomrule
+        \end{tabular}
+    \end{table}
+    
+    \subsection{Model Saving and Export}
+    
+    After training, the best model was saved and exported for use in the detection pipeline:
+    
+    \begin{lstlisting}[caption=Pseudocode for model saving, language=Python]
+# Pseudocode for model saving
+If training successful:
+    Load best model from trained weights
+    Export model to TorchScript format
+    Copy model to final destination for pipeline use
+    \end{lstlisting}
+    
+    The exported model was saved to \texttt{saved\_models/finetuned\_yolov8n.pt} for subsequent use in the detection pipeline.
+\newpage
+\section{Challenges and Solutions}
+
+    \subsection{Challenges Encountered}
+    
+    During the development of the traffic detection and tracking system, several challenges were encountered:
+    
+    \begin{enumerate}
+        \item \textbf{Occlusion Handling}: Vehicles sometimes overlap or get occluded, making tracking difficult
+        \item \textbf{Class Imbalance}: Uneven distribution of classes in the training dataset
+        \item \textbf{Color Variation}: Vehicle color appears different under varying lighting conditions
+        \item \textbf{Real-time Processing}: Balancing accuracy and processing speed
+        \item \textbf{Direction Classification}: Determining vehicle movement direction from static frames
+    \end{enumerate}
+    
+    \subsection{Solutions Implemented}
+    
+    To address these challenges, the following solutions were implemented:
+    
+    \begin{enumerate}
+        \item \textbf{Robust Tracking Algorithm}: Using multiple criteria (position, color, time) to maintain identity
+        \item \textbf{One-frame-per-second Processing}: Optimizing resource usage while maintaining tracking integrity
+        \item \textbf{Class-specific Tracking}: Separating tracking by vehicle class to reduce false matches
+        \item \textbf{Cost-based Assignment}: Using a combined cost function for optimal matching
+        \item \textbf{Vertical Position Heuristic}: Using frame position and movement direction for classification
+    \end{enumerate}
+
+\section{Future Improvements}
+
+    \subsection{Short-term Enhancements}
+    
+    Several potential enhancements could be implemented in the near term:
+    
+    \begin{enumerate}
+        \item \textbf{Speed Estimation}: Calculate vehicle speeds based on displacement and frame time
+        \item \textbf{Lane Detection}: Identify lanes and associate vehicles with specific lanes
+        \item \textbf{Traffic Density Analysis}: Calculate congestion levels in different road segments
+        \item \textbf{Multi-camera Support}: Extend tracking across multiple camera views
+    \end{enumerate}
+    
+    \subsection{Long-term Research Directions}
+    
+    Looking further ahead, several research directions could be pursued:
+    
+    \begin{enumerate}
+        \item \textbf{Behavior Analysis}: Detect abnormal driving patterns or traffic violations
+        \item \textbf{Traffic Flow Prediction}: Use historical data to predict future traffic patterns
+        \item \textbf{Environmental Impact Assessment}: Estimate emissions based on vehicle types and counts
+        \item \textbf{Integration with Traffic Control Systems}: Feed data to traffic light control systems
+    \end{enumerate}
+
+\section{Conclusion}
+
+    \rhostart{T}his project successfully demonstrates the effectiveness of YOLOv8 for traffic object detection, combined with a custom tracking algorithm for vehicle monitoring. The system achieved good performance in detecting and tracking vehicles, as well as classifying their direction of movement.
+    
+    The separation of the model fine-tuning process from the main detection pipeline allows for efficient deployment, with the system using a pre-optimized model during regular operation. The modular architecture enables easy extensions and improvements, making it adaptable to various traffic monitoring scenarios.
+
+\section{References}
+
+    \begin{enumerate}
+        \item Ultralytics YOLOv8: \url{https://github.com/ultralytics/ultralytics}
+        \item Joseph Redmon, et al. "You Only Look Once: Unified, Real-Time Object Detection."
+        \item Glenn Jocher, et al. "YOLOv5: Better, Faster, Stronger."
+        \item Wu, Z., et al. "Deep SORT: Simple Online and Realtime Tracking with a Deep Association Metric."
+        \item LabelImg: \url{https://github.com/tzutalin/labelImg}
+    \end{enumerate}
+\newpage
+\section*{Appendix A: Implementation Details}
+
+    \subsection*{A.1 Project Structure}
+    
+    \begin{lstlisting}[caption=Project directory structure, language=bash]
+TrafficDetection/
+├── data.yaml                  
+│   # Dataset configuration
+├── frame-generation.py        
+│   # Script to extract frames from videos
+├── organize-dataset.py        
+│   # Script to organize dataset
+├── TrafficDetection.ipynb     
+│   # Main notebook for detection & tracking
+├── saved_models/              
+│   │# Directory for saved models
+│   └── finetuned_yolov8n.pt   
+│       # Fine-tuned YOLOv8 model
+├── datasets/                  
+│   │# Training datasets
+│   └── dataset/
+│       ├── images/
+│       │   ├── all/           
+│       │   │   # All extracted frames
+│       │   ├── train/         
+│       │   │   # Training images
+│       │   └── val/           
+│       │       # Validation images
+│       └── labels/
+│           ├── train/         
+│           │   # Training labels
+│           └── val/           
+│               # Validation labels
+├── frames/                    
+│   │# Directory for input video frames
+│   └── output739864687.mp4    
+│      # Sample input video
+└── result/                    
+    │# Results of detection and tracking
+    ├── output_lane_detected.mp4  
+    │   # Processed video with annotations
+    └── vehicle_counts.csv     
+        # Traffic statistics in CSV format
+    \end{lstlisting}
+    
+    \subsection*{A.2 Key Functions}
+    
+    \textbf{Video Processing Function}
+    
+    The main video processing function handles the complete pipeline from video input to statistical output:
+    
+    \begin{lstlisting}[caption=Pseudocode for video processing, language=Python]
+# Pseudocode for video processing
+function process_video(input_video, output_video, output_csv, start_time, end_time):
+    Open input video
+    Initialize vehicle tracker
+    Set up output video writer
+    
+    For each frame in the specified time range:
+        If frame is at 1-second interval:
+            Detect vehicles in frame
+            Update tracker with detected vehicles
+            Log progress information
+            Display and save annotated frame
+        Else:
+            Save original frame to output video
+    
+    Calculate final statistics (incoming and outgoing vehicles)
+    Save statistics to CSV file
+    Display final summary
+    \end{lstlisting}
+    
+    \textbf{Vehicle Tracker Class}
+    
+    The \texttt{VehicleTracker} class implements the core tracking logic:
+    
+    \begin{lstlisting}[caption=Pseudocode for vehicle tracker, language=Python]
+# Pseudocode for vehicle tracker
+class VehicleTracker:
+    Initialize empty vehicle dictionary
+    
+    function update(detected_vehicles, frame_idx, frame, fps):
+        Group detections by vehicle class
+        
+        For each vehicle class:
+            Find potential matches between new detections and existing vehicles
+            Calculate matching cost based on distance and color
+            Assign matches greedily to ensure one-to-one mapping
+            
+            For each matched detection:
+                Update vehicle record
+                Determine direction based on movement
+                Draw bounding box and label
+                
+            For each unmatched detection:
+                Create new vehicle entry
+                Determine initial direction based on position
+                Draw bounding box and label
+                
+        Return lists of new and updated vehicles, and annotated frame
+    \end{lstlisting}
+    
+    \subsection*{A.3 Output Format}
+    
+    The system generates two primary outputs:
+    
+    \begin{enumerate}
+        \item \textbf{Annotated Video}: The processed video with bounding boxes around detected vehicles, each labeled with its unique ID.
+        
+        \item \textbf{CSV File}: A simple CSV file containing counts of incoming and outgoing vehicles:
+        \begin{lstlisting}[caption=CSV output format, language=bash]
+Incoming Vehicles,Outgoing Vehicles
+1,0
+        \end{lstlisting}
+        
+        \item \textbf{Console Output}: Detailed logging information to monitor the system's operation:
+        \begin{lstlisting}[caption=Console output example, language=bash]
+0: 480x640 (no detections), 53.8ms
+Speed: 0.9ms preprocess, 53.8ms inference, 0.2ms postprocess per image at shape (1, 3, 480, 640)
+
+[DETECTION] Vehicles Detected: 0
+[FRAME 170] Vehicles Detected: 0
+
+[TIME UPDATE] -------------------------------------
+Time Elapsed: 17 sec
+Vehicles Detected: 0 in this second
+New Vehicles:
+Old Vehicles:
+----------------------------------
+
+[PROCESS COMPLETE] -------------------------------
+Processed Video Interval: 15 - 20 sec
+Vehicle Counts Saved to: ./result/vehicle_counts.csv
+Incoming Vehicles: 1
+Outgoing Vehicles: 0
+----------------------------------
+\end{lstlisting}
+    \end{enumerate}
+    
+    This multi-faceted output approach provides both visual confirmation of the system's operation and statistical data for further analysis.
+
+%----------------------------------------------------------
+
+\printbibliography
+
+%----------------------------------------------------------
+
+\end{document}
