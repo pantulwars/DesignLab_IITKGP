@@ -1,0 +1,14 @@
+random
+car
+truck
+bus
+motorcycle
+traffic light
+fire hydrant
+person
+bicycle
+airplane
+train
+boat
+stop sign
+parking meter

@@ -1,0 +1,25 @@
+# data.yaml
+
+# Paths to training and validation images
+train: dataset/images/train
+val: dataset/images/val
+
+# Number of classes: 13 in this case
+nc: 14
+
+# Class names in the order you want (index 0 will be "person", 1 "bicycle", etc.)
+names:
+  - random
+  - car
+  - truck
+  - bus
+  - motorcycle
+  - traffic light
+  - fire hydrant
+  - person
+  - bicycle
+  - airplane
+  - train
+  - boat
+  - stop sign
+  - parking meter
