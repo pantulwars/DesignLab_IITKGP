@@ -169,16 +169,8 @@ yolo train data=data.yaml model=yolov8n.pt epochs=50 imgsz=640
 
 ## Customization
 
-- Modify thresholds in the tracking heuristic if necessary to adapt to different road geometries or video qualities.
 - Adjust YOLOv8 confidence thresholds in the notebook for different detection sensitivities.
 
-## License
-
-Add your chosen license here (e.g., MIT, Apache 2.0, etc.).
-
-## Contact
-
-If you have questions or issues, please contact pantulwarsaras@gmail.com or open an issue in this repository.
 
 ## Additional Resources
 
